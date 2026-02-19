@@ -22,6 +22,7 @@ import com.example.voicerec.MainActivity
 import com.example.voicerec.R
 import com.example.voicerec.databinding.FragmentPlayerBinding
 import com.example.voicerec.service.RecordingService
+import com.example.voicerec.service.WhisperModel
 import com.example.voicerec.service.WhisperModelManager
 import com.example.voicerec.service.WhisperService
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -185,22 +186,32 @@ class PlayerFragment : Fragment() {
         }
 
         // 检查模型是否已准备好
-        val modelManager = WhisperModelManager(requireContext())
-        if (!modelManager.isModelReady()) {
-            // 显示准备模型对话框
-            MaterialAlertDialogBuilder(requireContext())
-                .setTitle("准备语音识别模型")
-                .setMessage("首次使用需要复制中文语音识别模型 (~800MB) 到应用目录。\n\n是否立即准备？")
-                .setPositiveButton("准备") { _, _ ->
-                    prepareModelAndTranscribe(recording)
-                }
-                .setNegativeButton("取消", null)
-                .show()
-            return
-        }
+        lifecycleScope.launch {
+            val modelManager = WhisperModelManager(requireContext())
+            val selectedModel = modelManager.getSelectedModel()
 
-        // 直接开始转写
-        performTranscription(recording)
+            if (!modelManager.isModelReady(selectedModel)) {
+                // 显示准备模型对话框
+                val sizeText = when {
+                    selectedModel.minSizeBytes >= 1024 * 1024 * 1024 -> "~${selectedModel.minSizeBytes / (1024 * 1024 * 1024)}GB"
+                    selectedModel.minSizeBytes >= 1024 * 1024 -> "~${selectedModel.minSizeBytes / (1024 * 1024)}MB"
+                    else -> "~${selectedModel.minSizeBytes / 1024}KB"
+                }
+
+                MaterialAlertDialogBuilder(requireContext())
+                    .setTitle("准备语音识别模型")
+                    .setMessage("首次使用需要复制${selectedModel.displayName}模型 (${sizeText})到应用目录。\n\n是否立即准备？")
+                    .setPositiveButton("准备") { _, _ ->
+                        prepareModelAndTranscribe(recording)
+                    }
+                    .setNegativeButton("取消", null)
+                    .show()
+                return@launch
+            }
+
+            // 直接开始转写
+            performTranscription(recording)
+        }
     }
 
     private fun prepareModelAndTranscribe(recording: com.example.voicerec.data.Recording) {
@@ -213,7 +224,8 @@ class PlayerFragment : Fragment() {
 
         lifecycleScope.launch {
             val modelManager = WhisperModelManager(requireContext())
-            val result = modelManager.copyModelFromAssets { message ->
+            val selectedModel = modelManager.getSelectedModel()
+            val result = modelManager.copyModelFromAssets(selectedModel) { message ->
                 activity?.runOnUiThread {
                     progressDialog.setMessage(message)
                 }

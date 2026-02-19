@@ -44,23 +44,26 @@ class WhisperService(private val context: Context) {
     suspend fun loadModel(): Boolean = withContext(Dispatchers.IO) {
         try {
             val modelManager = WhisperModelManager(context)
+            val selectedModel = modelManager.getSelectedModel()
 
-            if (!modelManager.isModelReady()) {
+            Log.i(TAG, "Loading model: ${selectedModel.displayName}")
+
+            if (!modelManager.isModelReady(selectedModel)) {
                 Log.w(TAG, "Model not ready, copying from assets...")
-                val copyResult = modelManager.copyModelFromAssets { }
+                val copyResult = modelManager.copyModelFromAssets(selectedModel) { }
                 if (copyResult.isFailure) {
                     Log.e(TAG, "Failed to copy model: ${copyResult.exceptionOrNull()?.message}")
                     return@withContext false
                 }
             }
 
-            val modelFile = modelManager.getModelFile()
+            val modelFile = modelManager.getModelFile(selectedModel)
             Log.i(TAG, "Loading model from: ${modelFile.absolutePath}")
 
             isModelLoaded = loadModel(modelFile.absolutePath)
 
             if (isModelLoaded) {
-                Log.i(TAG, "Model loaded successfully")
+                Log.i(TAG, "Model loaded successfully: ${selectedModel.displayName}")
             } else {
                 Log.e(TAG, "Failed to load model")
             }

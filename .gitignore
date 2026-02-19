@@ -16,4 +16,5 @@ local.properties
 
 # Whisper model files (too large for git)
 app/src/main/assets/ggml-base-q8_0.bin
+app/src/main/assets/ggml-small-q8_0.bin
 app/src/main/assets/ggml-large-v3-turbo-q8_0.bin

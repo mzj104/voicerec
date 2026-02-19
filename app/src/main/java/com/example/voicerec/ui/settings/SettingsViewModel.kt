@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.asLiveData
 import com.example.voicerec.data.RecordingRepository
+import com.example.voicerec.service.WhisperModel
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.runBlocking
 
@@ -17,6 +18,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     // 设置项
     val volumeThreshold = settingsDataStore.volumeThreshold.asLiveData()
     val silenceTimeout = settingsDataStore.silenceTimeout.asLiveData()
+    val whisperModel = settingsDataStore.whisperModel.asLiveData()
 
     /**
      * 获取存储使用情况
@@ -46,6 +48,20 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
      */
     suspend fun updateSilenceTimeout(value: Int) {
         settingsDataStore.updateSilenceTimeout(value)
+    }
+
+    /**
+     * 更新Whisper模型
+     */
+    suspend fun updateWhisperModel(model: WhisperModel) {
+        settingsDataStore.updateWhisperModel(model)
+    }
+
+    /**
+     * 获取可用的Whisper模型列表
+     */
+    fun getAvailableModels(): List<WhisperModel> {
+        return WhisperModel.getAvailableModels()
     }
 
     /**

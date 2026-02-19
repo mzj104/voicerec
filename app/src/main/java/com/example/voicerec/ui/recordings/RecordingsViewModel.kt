@@ -189,7 +189,10 @@ class RecordingsViewModel(application: Application) : AndroidViewModel(applicati
      */
     fun isModelDownloaded(): Boolean {
         val modelManager = WhisperModelManager(getApplication())
-        return modelManager.isModelReady()
+        return runBlocking {
+            val model = modelManager.getSelectedModel()
+            modelManager.isModelReady(model)
+        }
     }
 
     /**
@@ -197,10 +200,14 @@ class RecordingsViewModel(application: Application) : AndroidViewModel(applicati
      */
     fun getModelInfo(): ModelInfo {
         val modelManager = WhisperModelManager(getApplication())
-        return ModelInfo(
-            isDownloaded = modelManager.isModelReady(),
-            sizeBytes = modelManager.getModelSize()
-        )
+        return runBlocking {
+            val model = modelManager.getSelectedModel()
+            val modelFile = modelManager.getModelFile(model)
+            ModelInfo(
+                isDownloaded = modelManager.isModelReady(model),
+                sizeBytes = if (modelFile.exists()) modelFile.length() else 0
+            )
+        }
     }
 }
 

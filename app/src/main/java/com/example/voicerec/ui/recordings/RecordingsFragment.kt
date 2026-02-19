@@ -23,6 +23,7 @@ import com.example.voicerec.R
 import com.example.voicerec.data.Recording
 import com.example.voicerec.databinding.FragmentRecordingsBinding
 import com.example.voicerec.service.RecordingService
+import com.example.voicerec.service.WhisperModel
 import com.example.voicerec.service.WhisperModelManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.progressindicator.CircularProgressIndicator
@@ -424,14 +425,25 @@ class RecordingsFragment : Fragment() {
     }
 
     private fun showModelDownloadDialog(recording: Recording? = null) {
-        MaterialAlertDialogBuilder(requireContext())
-            .setTitle("准备语音识别模型")
-            .setMessage("首次使用需要复制中文语音识别模型 (~800MB) 到应用目录。\n\n是否立即准备？")
-            .setPositiveButton("准备") { _, _ ->
-                downloadModel(recording)
+        lifecycleScope.launch {
+            val modelManager = WhisperModelManager(requireContext())
+            val selectedModel = modelManager.getSelectedModel()
+
+            val sizeText = when {
+                selectedModel.minSizeBytes >= 1024 * 1024 * 1024 -> "~${selectedModel.minSizeBytes / (1024 * 1024 * 1024)}GB"
+                selectedModel.minSizeBytes >= 1024 * 1024 -> "~${selectedModel.minSizeBytes / (1024 * 1024)}MB"
+                else -> "~${selectedModel.minSizeBytes / 1024}KB"
             }
-            .setNegativeButton("取消", null)
-            .show()
+
+            MaterialAlertDialogBuilder(requireContext())
+                .setTitle("准备语音识别模型")
+                .setMessage("首次使用需要复制${selectedModel.displayName}模型 (${sizeText})到应用目录。\n\n是否立即准备？")
+                .setPositiveButton("准备") { _, _ ->
+                    downloadModel(recording)
+                }
+                .setNegativeButton("取消", null)
+                .show()
+        }
     }
 
     private fun downloadModel(recording: Recording? = null) {
@@ -443,10 +455,10 @@ class RecordingsFragment : Fragment() {
 
         progressDialog.show()
 
-        val modelManager = WhisperModelManager(requireContext())
-
         lifecycleScope.launch {
-            val result = modelManager.copyModelFromAssets { message ->
+            val modelManager = WhisperModelManager(requireContext())
+            val selectedModel = modelManager.getSelectedModel()
+            val result = modelManager.copyModelFromAssets(selectedModel) { message ->
                 activity?.runOnUiThread {
                     progressDialog.setMessage(message)
                 }

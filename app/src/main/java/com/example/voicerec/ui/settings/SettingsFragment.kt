@@ -9,6 +9,7 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import com.example.voicerec.databinding.FragmentSettingsBinding
+import com.example.voicerec.service.WhisperModel
 import kotlinx.coroutines.launch
 
 /**
@@ -68,6 +69,15 @@ class SettingsFragment : Fragment() {
         binding.btnSilence30.setOnClickListener {
             updateSilenceTimeout(30)
         }
+
+        // 模型选择按钮组
+        binding.btnModelBase.setOnClickListener {
+            updateWhisperModel(WhisperModel.BASE)
+        }
+
+        binding.btnModelLarge.setOnClickListener {
+            updateWhisperModel(WhisperModel.LARGE_V3_TURBO)
+        }
     }
 
     private fun observeData() {
@@ -82,6 +92,11 @@ class SettingsFragment : Fragment() {
             updateSilenceTimeoutUI(timeout)
         }
 
+        // 观察Whisper模型
+        viewModel.whisperModel.observe(viewLifecycleOwner) { model ->
+            updateWhisperModelUI(model)
+        }
+
         // 更新存储信息
         updateStorageInfo()
     }
@@ -90,6 +105,28 @@ class SettingsFragment : Fragment() {
         lifecycleScope.launch {
             viewModel.updateSilenceTimeout(seconds)
             updateSilenceTimeoutUI(seconds)
+        }
+    }
+
+    private fun updateWhisperModel(model: WhisperModel) {
+        lifecycleScope.launch {
+            viewModel.updateWhisperModel(model)
+            updateWhisperModelUI(model)
+        }
+    }
+
+    private fun updateWhisperModelUI(model: WhisperModel) {
+        // 更新按钮组选中状态
+        when (model) {
+            WhisperModel.BASE -> binding.toggleModel.check(binding.btnModelBase.id)
+            WhisperModel.LARGE_V3_TURBO -> binding.toggleModel.check(binding.btnModelLarge.id)
+        }
+
+        // 更新模型详情描述
+        binding.tvModelDetail.text = buildString {
+            append("当前: ${model.displayName}\n")
+            append("${model.description}\n")
+            append("建议内存: ${model.recommendedRamMB / 1000}GB+")
         }
     }
 
