@@ -53,6 +53,12 @@ class LlamaModelManager(private val context: Context) {
                 return Result.success(Unit)
             }
 
+            // Delete partial file if exists
+            if (targetFile.exists()) {
+                Log.i(TAG, "Deleting partial/incomplete model file")
+                targetFile.delete()
+            }
+
             val totalSize = assetFile.available().toLong()
             var copiedBytes = 0L
             val buffer = ByteArray(1024 * 1024)  // 1MB buffer
@@ -74,6 +80,16 @@ class LlamaModelManager(private val context: Context) {
 
         } catch (e: Exception) {
             Log.e(TAG, "Failed to copy model", e)
+            // Clean up partial file on failure
+            try {
+                val targetFile = getModelFile()
+                if (targetFile.exists()) {
+                    Log.i(TAG, "Cleaning up partial model file after failure")
+                    targetFile.delete()
+                }
+            } catch (cleanupException: Exception) {
+                Log.e(TAG, "Failed to clean up partial file", cleanupException)
+            }
             Result.failure(e)
         }
     }

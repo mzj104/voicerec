@@ -3,8 +3,9 @@ package com.example.voicerec.service
 import android.content.Context
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import kotlin.system.measureTimeMillis
 
 /**
  * Qwen2.5 LLM 标题生成服务
@@ -26,6 +27,7 @@ class LlamaService(private val context: Context) {
     }
 
     private var isModelLoaded = false
+    private val modelLoadMutex = Mutex()
 
     // Native methods
     private external fun initModel(modelPath: String, nThreads: Int): Int
@@ -36,6 +38,15 @@ class LlamaService(private val context: Context) {
      * 加载模型
      */
     suspend fun loadModel(): Boolean = withContext(Dispatchers.IO) {
+        modelLoadMutex.withLock {
+            loadModelInternal()
+        }
+    }
+
+    /**
+     * 内部模型加载逻辑（已在 IO 上下文中）
+     */
+    private suspend fun loadModelInternal(): Boolean {
         try {
             val modelManager = LlamaModelManager(context)
 
@@ -46,7 +57,7 @@ class LlamaService(private val context: Context) {
                 }
                 if (copyResult.isFailure) {
                     Log.e(TAG, "Failed to copy model: ${copyResult.exceptionOrNull()?.message}")
-                    return@withContext false
+                    return false
                 }
             }
 
@@ -62,11 +73,11 @@ class LlamaService(private val context: Context) {
                 Log.e(TAG, "Failed to load model, result code: $result")
             }
 
-            return@withContext isModelLoaded
+            return isModelLoaded
 
         } catch (e: Exception) {
             Log.e(TAG, "Error loading model", e)
-            return@withContext false
+            return false
         }
     }
 
@@ -74,42 +85,44 @@ class LlamaService(private val context: Context) {
      * 生成 AI 标题
      */
     suspend fun generateAiTitle(transcription: String): Result<String> = withContext(Dispatchers.IO) {
-        try {
-            // Validate input
-            if (transcription.isBlank()) {
-                return@withContext Result.failure(Exception("转写文本为空"))
-            }
-
-            // Limit input length
-            val truncated = transcription.take(500)
-
-            // Load model if needed
-            if (!isModelLoaded) {
-                Log.w(TAG, "Model not loaded, loading now...")
-                val loaded = loadModel()
-                if (!loaded) {
-                    return@withContext Result.failure(Exception("LLM模型加载失败"))
+        modelLoadMutex.withLock {
+            try {
+                // Validate input
+                if (transcription.isBlank()) {
+                    return@withLock Result.failure(Exception("转写文本为空"))
                 }
+
+                // Limit input length
+                val truncated = transcription.take(500)
+
+                // Load model if needed (inside mutex)
+                if (!isModelLoaded) {
+                    Log.w(TAG, "Model not loaded, loading now...")
+                    val loaded = loadModelInternal()
+                    if (!loaded) {
+                        return@withLock Result.failure(Exception("LLM模型加载失败"))
+                    }
+                }
+
+                // Build prompt for Qwen2.5 Instruct
+                val prompt = buildPrompt(truncated)
+
+                Log.i(TAG, "Generating title, prompt length: ${prompt.length}")
+
+                val rawOutput = generateTitle(prompt)
+                val cleanedTitle = cleanOutput(rawOutput)
+
+                if (cleanedTitle.isNotBlank()) {
+                    Log.i(TAG, "Title generated: '$cleanedTitle'")
+                    Result.success(cleanedTitle)
+                } else {
+                    Result.failure(Exception("生成的标题为空"))
+                }
+
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to generate AI title", e)
+                Result.failure(e)
             }
-
-            // Build prompt for Qwen2.5 Instruct
-            val prompt = buildPrompt(truncated)
-
-            Log.i(TAG, "Generating title, prompt length: ${prompt.length}")
-
-            val rawOutput = generateTitle(prompt)
-            val cleanedTitle = cleanOutput(rawOutput)
-
-            if (cleanedTitle.isNotBlank()) {
-                Log.i(TAG, "Title generated: '$cleanedTitle'")
-                Result.success(cleanedTitle)
-            } else {
-                Result.failure(Exception("生成的标题为空"))
-            }
-
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to generate AI title", e)
-            return@withContext Result.failure(e)
         }
     }
 
