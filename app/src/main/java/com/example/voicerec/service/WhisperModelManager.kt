@@ -8,13 +8,13 @@ import java.io.FileOutputStream
 
 /**
  * Whisper模型管理器
- * 管理ggml-base-q8_0.bin模型文件
+ * 管理ggml-large-v3-turbo-q8_0.bin模型文件
  */
 class WhisperModelManager(private val context: Context) {
 
     companion object {
-        private const val MODEL_FILE_NAME = "ggml-base-q8_0.bin"
-        private const val MIN_MODEL_SIZE = 50 * 1024 * 1024 // 50MB
+        private const val MODEL_FILE_NAME = "ggml-large-v3-turbo-q8_0.bin"
+        private const val MIN_MODEL_SIZE = 500 * 1024 * 1024 // 500MB
     }
 
     /**
@@ -115,6 +115,7 @@ class WhisperModelManager(private val context: Context) {
     fun getFormattedSize(): String {
         val bytes = getModelSize()
         return when {
+            bytes >= 1024 * 1024 * 1024 -> "%.1fGB".format(bytes / (1024.0 * 1024 * 1024))
             bytes >= 1024 * 1024 -> "%.1fMB".format(bytes / (1024.0 * 1024))
             bytes >= 1024 -> "%.1fKB".format(bytes / 1024.0)
             else -> "${bytes}B"

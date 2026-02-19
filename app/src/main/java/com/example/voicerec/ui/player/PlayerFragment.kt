@@ -190,7 +190,7 @@ class PlayerFragment : Fragment() {
             // 显示准备模型对话框
             MaterialAlertDialogBuilder(requireContext())
                 .setTitle("准备语音识别模型")
-                .setMessage("首次使用需要复制中文语音识别模型 (~78MB) 到应用目录。\n\n是否立即准备？")
+                .setMessage("首次使用需要复制中文语音识别模型 (~800MB) 到应用目录。\n\n是否立即准备？")
                 .setPositiveButton("准备") { _, _ ->
                     prepareModelAndTranscribe(recording)
                 }
