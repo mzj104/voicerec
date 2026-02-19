@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/recordingsFragment">
+
+    <fragment
+        android:id="@+id/recordingsFragment"
+        android:name="com.example.voicerec.ui.recordings.RecordingsFragment"
+        android:label="录音记录"
+        tools:layout="@layout/fragment_recordings">
+        <action
+            android:id="@+id/action_recordings_to_player"
+            app:destination="@id/playerFragment" />
+        <action
+            android:id="@+id/action_recordings_to_settings"
+            app:destination="@id/settingsFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/playerFragment"
+        android:name="com.example.voicerec.ui.player.PlayerFragment"
+        android:label="播放录音"
+        tools:layout="@layout/fragment_player">
+        <argument
+            android:name="recordingId"
+            app:argType="long" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/settingsFragment"
+        android:name="com.example.voicerec.ui.settings.SettingsFragment"
+        android:label="设置"
+        tools:layout="@layout/fragment_settings" />
+
+</navigation>
