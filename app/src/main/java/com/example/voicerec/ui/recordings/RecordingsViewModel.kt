@@ -5,8 +5,12 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.asLiveData
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import com.example.voicerec.data.Recording
 import com.example.voicerec.data.RecordingRepository
+import com.example.voicerec.service.WhisperModelManager
+import com.example.voicerec.service.WhisperService
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.runBlocking
 import java.text.SimpleDateFormat
@@ -137,7 +141,81 @@ class RecordingsViewModel(application: Application) : AndroidViewModel(applicati
         val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
         return sdf.format(Date())
     }
+
+    /**
+     * 转写录音
+     */
+    suspend fun transcribeRecording(recording: Recording): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            val modelManager = WhisperModelManager(getApplication())
+
+            // 确保模型已准备好
+            if (!modelManager.isModelReady()) {
+                val copyResult = modelManager.copyModelFromAssets { }
+                if (copyResult.isFailure) {
+                    return@withContext Result.failure(ModelNotDownloadedException())
+                }
+            }
+
+            val whisperService = WhisperService(getApplication())
+
+            val result = whisperService.transcribeAudio(recording.filePath) { progress ->
+                // 进度回调
+            }
+
+            whisperService.release()
+
+            result.fold(
+                onSuccess = { text ->
+                    val updatedRecording = recording.copy(
+                        transcriptionText = text,
+                        transcriptionTime = System.currentTimeMillis()
+                    )
+                    repository.updateRecording(updatedRecording)
+                    Result.success(text)
+                },
+                onFailure = { error ->
+                    Result.failure(error)
+                }
+            )
+
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * 检查模型是否已下载
+     */
+    fun isModelDownloaded(): Boolean {
+        val modelManager = WhisperModelManager(getApplication())
+        return modelManager.isModelReady()
+    }
+
+    /**
+     * 获取模型信息
+     */
+    fun getModelInfo(): ModelInfo {
+        val modelManager = WhisperModelManager(getApplication())
+        return ModelInfo(
+            isDownloaded = modelManager.isModelReady(),
+            sizeBytes = modelManager.getModelSize()
+        )
+    }
 }
+
+/**
+ * 模型未下载异常
+ */
+class ModelNotDownloadedException : Exception("模型未下载，请先下载模型")
+
+/**
+ * 模型信息
+ */
+data class ModelInfo(
+    val isDownloaded: Boolean,
+    val sizeBytes: Long
+)
 
 /**
  * 服务状态
