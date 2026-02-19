@@ -13,3 +13,6 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Whisper model file (78MB, too large for git)
+app/src/main/assets/ggml-base-q8_0.bin
