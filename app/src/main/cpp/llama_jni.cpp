@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include <android/log.h>
+#include <mutex>
 
 #define LOG_TAG "LlamaJNI"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
@@ -14,6 +15,7 @@ static llama_model* g_model = nullptr;
 static llama_context* g_ctx = nullptr;
 static llama_sampler* g_sampler = nullptr;
 static int g_n_threads = 4;
+static std::mutex g_llama_mutex;
 
 extern "C" JNIEXPORT jint JNICALL
 Java_com_example_voicerec_service_LlamaService_initModel(
@@ -22,7 +24,17 @@ Java_com_example_voicerec_service_LlamaService_initModel(
     jstring model_path,
     jint n_threads) {
 
+    if (model_path == nullptr) {
+        LOGE("Model path is null");
+        return -1;
+    }
+
     const char* model_path_cstr = env->GetStringUTFChars(model_path, nullptr);
+    if (model_path_cstr == nullptr) {
+        LOGE("Failed to get model path string");
+        return -1;
+    }
+
     g_n_threads = n_threads;
 
     LOGI("Initializing llama model from: %s", model_path_cstr);
@@ -60,6 +72,12 @@ Java_com_example_voicerec_service_LlamaService_initModel(
 
     LOGI("Llama context initialized");
 
+    // Free existing sampler if re-initializing
+    if (g_sampler != nullptr) {
+        llama_sampler_free(g_sampler);
+        g_sampler = nullptr;
+    }
+
     // Initialize sampler chain
     struct llama_sampler_chain_params sparams = llama_sampler_chain_default_params();
     g_sampler = llama_sampler_chain_init(sparams);
@@ -85,7 +103,20 @@ Java_com_example_voicerec_service_LlamaService_generateTitle(
         return env->NewStringUTF("");
     }
 
-    std::string prompt = env->GetStringUTFChars(prompt_jstring, nullptr);
+    if (prompt_jstring == nullptr) {
+        LOGE("Prompt string is null");
+        return env->NewStringUTF("");
+    }
+
+    std::lock_guard<std::mutex> lock(g_llama_mutex);
+
+    const char* prompt_cstr = env->GetStringUTFChars(prompt_jstring, nullptr);
+    if (prompt_cstr == nullptr) {
+        LOGE("Failed to get prompt string");
+        return env->NewStringUTF("");
+    }
+    std::string prompt(prompt_cstr);
+    env->ReleaseStringUTFChars(prompt_jstring, prompt_cstr);
 
     // Allocate buffer for tokens
     std::vector<llama_token> tokens;
