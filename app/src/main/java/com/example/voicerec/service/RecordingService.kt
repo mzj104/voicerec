@@ -24,7 +24,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
 import android.util.Log
-import kotlin.Result
 
 /**
  * 录音服务
@@ -70,6 +69,7 @@ class RecordingService : Service() {
     private var recordingStartTime = 0L
     private var lastSoundTime = 0L
     private var volumeCheckJob: Job? = null
+    private var titleGenerationJob: Job? = null
 
     // 组件
     private var mediaRecorder: MediaRecorder? = null
@@ -123,6 +123,8 @@ class RecordingService : Service() {
         if (currentState == STATE_IDLE) return
 
         volumeCheckJob?.cancel()
+        titleGenerationJob?.cancel()
+        titleGenerationJob = null
         stopCurrentRecorder()
         currentState = STATE_IDLE
         releaseWakeLock()
@@ -380,16 +382,19 @@ class RecordingService : Service() {
      * 生成 AI 标题
      */
     private fun generateAiTitle(recordingId: Long, transcriptionText: String) {
-        CoroutineScope(Dispatchers.IO).launch {
+        titleGenerationJob = CoroutineScope(Dispatchers.IO).launch {
             try {
                 val llamaService = LlamaService(applicationContext)
-                val aiTitle = llamaService.generateAiTitle(transcriptionText).getOrNull()
-                aiTitle?.let { title ->
-                    Log.i(TAG, "AI title generated: $title for recording: $recordingId")
-                    // Update database with AI title
-                    repository.updateAiTitle(recordingId, title, System.currentTimeMillis())
+                try {
+                    val aiTitle = llamaService.generateAiTitle(transcriptionText).getOrNull()
+                    aiTitle?.let { title ->
+                        Log.i(TAG, "AI title generated: $title for recording: $recordingId")
+                        // Update database with AI title
+                        repository.updateAiTitle(recordingId, title, System.currentTimeMillis())
+                    }
+                } finally {
+                    llamaService.release()
                 }
-                llamaService.release()
             } catch (e: Exception) {
                 Log.w(TAG, "AI title generation failed, not blocking", e)
                 // Don't throw - title generation failure shouldn't block transcription
