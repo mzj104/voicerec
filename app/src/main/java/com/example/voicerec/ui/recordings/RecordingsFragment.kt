@@ -186,6 +186,11 @@ class RecordingsFragment : Fragment() {
                 checkPermissionAndStart()
             }
         }
+
+        binding.fabSettings.setOnClickListener {
+            // 导航到设置页面
+            (activity as? MainActivity)?.navigateToSettings()
+        }
     }
 
     private fun observeData() {

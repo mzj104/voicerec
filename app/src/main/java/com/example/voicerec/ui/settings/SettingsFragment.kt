@@ -71,6 +71,10 @@ class SettingsFragment : Fragment() {
         }
 
         // 模型选择按钮组
+        binding.btnModelSmall.setOnClickListener {
+            updateWhisperModel(WhisperModel.SMALL)
+        }
+
         binding.btnModelBase.setOnClickListener {
             updateWhisperModel(WhisperModel.BASE)
         }
@@ -118,6 +122,7 @@ class SettingsFragment : Fragment() {
     private fun updateWhisperModelUI(model: WhisperModel) {
         // 更新按钮组选中状态
         when (model) {
+            WhisperModel.SMALL -> binding.toggleModel.check(binding.btnModelSmall.id)
             WhisperModel.BASE -> binding.toggleModel.check(binding.btnModelBase.id)
             WhisperModel.LARGE_V3_TURBO -> binding.toggleModel.check(binding.btnModelLarge.id)
         }

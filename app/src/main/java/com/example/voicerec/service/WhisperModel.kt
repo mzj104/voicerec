@@ -11,6 +11,14 @@ enum class WhisperModel(
     val description: String,
     val recommendedRamMB: Int
 ) {
+    SMALL(
+        id = "small",
+        displayName = "Small (平衡)",
+        fileName = "ggml-small-q8_0.bin",
+        minSizeBytes = 50 * 1024 * 1024,
+        description = "速度与准确率平衡，推荐使用 (~246MB)",
+        recommendedRamMB = 4_000
+    ),
     BASE(
         id = "base",
         displayName = "Base (快速)",
@@ -30,7 +38,7 @@ enum class WhisperModel(
 
     companion object {
         fun fromId(id: String): WhisperModel {
-            return values().find { it.id == id } ?: BASE
+            return values().find { it.id == id } ?: SMALL
         }
 
         fun getAvailableModels(): List<WhisperModel> {

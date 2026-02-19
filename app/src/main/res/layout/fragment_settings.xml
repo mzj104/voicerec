@@ -204,6 +204,14 @@
                         app:singleSelection="true">
 
                         <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btn_model_small"
+                            style="@style/Widget.Material3.Button.OutlinedButton"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="平衡" />
+
+                        <com.google.android.material.button.MaterialButton
                             android:id="@+id/btn_model_base"
                             style="@style/Widget.Material3.Button.OutlinedButton"
                             android:layout_width="0dp"
