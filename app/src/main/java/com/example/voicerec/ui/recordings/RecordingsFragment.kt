@@ -21,9 +21,16 @@ import com.example.voicerec.R
 import com.example.voicerec.data.Recording
 import com.example.voicerec.databinding.FragmentRecordingsBinding
 import com.example.voicerec.service.RecordingService
+import com.example.voicerec.service.WhisperModelManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.progressindicator.CircularProgressIndicator
 import kotlinx.coroutines.launch
 import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import android.content.ClipData
+import android.content.ClipboardManager
 
 /**
  * 录音列表Fragment
@@ -125,6 +132,9 @@ class RecordingsFragment : Fragment() {
             },
             onDayDelete = { day ->
                 confirmDeleteDay(day)
+            },
+            onTranscribe = { recording ->
+                transcribeRecording(recording)
             }
         )
 
@@ -332,6 +342,112 @@ class RecordingsFragment : Fragment() {
                 }
             }
             .setNegativeButton("取消", null)
+            .show()
+    }
+
+    private fun transcribeRecording(recording: Recording) {
+        // 检查模型是否已下载
+        if (!viewModel.isModelDownloaded()) {
+            showModelDownloadDialog(recording)
+            return
+        }
+
+        // 如果已有转录结果，直接显示
+        if (!recording.transcriptionText.isNullOrEmpty()) {
+            showTranscriptionResult(
+                recording.transcriptionText!!,
+                recording.transcriptionTime
+            )
+            return
+        }
+
+        // 显示进度对话框
+        val progressDialog = MaterialAlertDialogBuilder(requireContext())
+            .setTitle("语音转文字")
+            .setMessage("正在处理...")
+            .setCancelable(false)
+            .create()
+
+        progressDialog.show()
+
+        lifecycleScope.launch {
+            val result = viewModel.transcribeRecording(recording)
+
+            progressDialog.dismiss()
+
+            result.fold(
+                onSuccess = { text ->
+                    showTranscriptionResult(text, System.currentTimeMillis())
+                },
+                onFailure = { error ->
+                    val message = "识别失败: ${error.message ?: "未知错误"}"
+                    Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                }
+            )
+        }
+    }
+
+    private fun showModelDownloadDialog(recording: Recording? = null) {
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle("准备语音识别模型")
+            .setMessage("首次使用需要复制中文语音识别模型 (~78MB) 到应用目录。\n\n是否立即准备？")
+            .setPositiveButton("准备") { _, _ ->
+                downloadModel(recording)
+            }
+            .setNegativeButton("取消", null)
+            .show()
+    }
+
+    private fun downloadModel(recording: Recording? = null) {
+        val progressDialog = MaterialAlertDialogBuilder(requireContext())
+            .setTitle("准备模型")
+            .setMessage("正在复制模型...")
+            .setCancelable(false)
+            .create()
+
+        progressDialog.show()
+
+        val modelManager = WhisperModelManager(requireContext())
+
+        lifecycleScope.launch {
+            val result = modelManager.copyModelFromAssets { message ->
+                activity?.runOnUiThread {
+                    progressDialog.setMessage(message)
+                }
+            }
+
+            progressDialog.dismiss()
+
+            result.fold(
+                onSuccess = {
+                    Toast.makeText(context, "模型准备完成", Toast.LENGTH_SHORT).show()
+                    recording?.let { transcribeRecording(it) }
+                },
+                onFailure = { error ->
+                    Toast.makeText(context, "失败: ${error.message}", Toast.LENGTH_LONG).show()
+                }
+            )
+        }
+    }
+
+    private fun showTranscriptionResult(text: String, timestamp: Long?) {
+        val timeText = if (timestamp != null) {
+            val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+            "\n\n转录时间: ${sdf.format(Date(timestamp))}"
+        } else {
+            ""
+        }
+
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle("转写结果")
+            .setMessage(text + timeText)
+            .setPositiveButton("复制") { _, _ ->
+                val clipboard = requireContext().getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                val clip = ClipData.newPlainText("转写结果", text)
+                clipboard.setPrimaryClip(clip)
+                Toast.makeText(context, "已复制到剪贴板", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("关闭", null)
             .show()
     }
 }
