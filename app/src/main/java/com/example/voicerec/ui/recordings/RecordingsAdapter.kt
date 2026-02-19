@@ -109,7 +109,9 @@ class RecordingsAdapter(
             val time = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault())
                 .format(java.util.Date(recording.timestamp))
 
-            titleText.text = time
+            val timeText = time
+            val aiTitleText = recording.aiTitle?.let { " · $it" } ?: ""
+            titleText.text = timeText + aiTitleText
             subtitleText.text = "${viewModel.formatDuration(recording.durationMs)} · " +
                     viewModel.formatFileSize(recording.fileSizeBytes)
 
