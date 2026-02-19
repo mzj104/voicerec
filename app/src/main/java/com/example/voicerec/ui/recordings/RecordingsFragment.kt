@@ -128,9 +128,13 @@ class RecordingsFragment : Fragment() {
         val intent = Intent(requireContext(), RecordingService::class.java)
         requireContext().bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
 
-        // 注册转写完成广播
+        // 注册转写完成广播 (Android 12+ 需要指定标志)
         val filter = IntentFilter(RecordingService.ACTION_TRANSCRIPTION_COMPLETE)
-        requireContext().registerReceiver(transcriptionReceiver, filter)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            requireContext().registerReceiver(transcriptionReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            requireContext().registerReceiver(transcriptionReceiver, filter)
+        }
     }
 
     override fun onStop() {
