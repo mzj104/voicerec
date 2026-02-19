@@ -26,5 +26,7 @@ data class Recording(
     val durationMs: Long,
     val fileSizeBytes: Long,
     val transcriptionText: String? = null,
-    val transcriptionTime: Long? = null
+    val transcriptionTime: Long? = null,
+    val aiTitle: String? = null,
+    val aiTitleTime: Long? = null
 )

@@ -90,4 +90,10 @@ interface RecordingDao {
      */
     @Query("SELECT * FROM recordings WHERE dayFolder = :day ORDER BY timestamp DESC")
     suspend fun getRecordingsByDaySync(day: String): List<Recording>
+
+    /**
+     * 更新AI生成的标题
+     */
+    @Query("UPDATE recordings SET aiTitle = :title, aiTitleTime = :timestamp WHERE id = :id")
+    suspend fun updateAiTitle(id: Long, title: String, timestamp: Long)
 }
