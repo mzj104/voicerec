@@ -1,8 +1,10 @@
 package com.example.voicerec.ui.recordings
 
+import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.ServiceConnection
 import android.os.Build
 import android.os.Bundle
@@ -44,6 +46,26 @@ class RecordingsFragment : Fragment() {
 
     private var recordingService: RecordingService? = null
     private var serviceBound = false
+
+    // 转写完成广播接收器
+    private val transcriptionReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == RecordingService.ACTION_TRANSCRIPTION_COMPLETE) {
+                val recordingId = intent.getLongExtra("recordingId", -1L)
+                if (recordingId > 0) {
+                    // 转写完成，刷新列表
+                    activity?.runOnUiThread {
+                        Toast.makeText(
+                            context,
+                            "转写完成",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        // LiveData会自动刷新UI
+                    }
+                }
+            }
+        }
+    }
 
     private val serviceConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
@@ -105,6 +127,10 @@ class RecordingsFragment : Fragment() {
         // 绑定服务
         val intent = Intent(requireContext(), RecordingService::class.java)
         requireContext().bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
+
+        // 注册转写完成广播
+        val filter = IntentFilter(RecordingService.ACTION_TRANSCRIPTION_COMPLETE)
+        requireContext().registerReceiver(transcriptionReceiver, filter)
     }
 
     override fun onStop() {
@@ -112,6 +138,12 @@ class RecordingsFragment : Fragment() {
         if (serviceBound) {
             requireContext().unbindService(serviceConnection)
             serviceBound = false
+        }
+        // 注销广播接收器
+        try {
+            requireContext().unregisterReceiver(transcriptionReceiver)
+        } catch (e: Exception) {
+            // 忽略未注册的异常
         }
     }
 

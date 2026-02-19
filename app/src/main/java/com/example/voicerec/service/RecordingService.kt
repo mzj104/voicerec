@@ -15,6 +15,7 @@ import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 import com.example.voicerec.MainActivity
 import com.example.voicerec.R
+import com.example.voicerec.data.Recording
 import com.example.voicerec.data.RecordingRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -22,6 +23,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
+import android.util.Log
 
 /**
  * 录音服务
@@ -35,6 +37,7 @@ class RecordingService : Service() {
         const val ACTION_START = "com.example.voicerec.START_RECORDING"
         const val ACTION_STOP = "com.example.voicerec.STOP_RECORDING"
         const val ACTION_UPDATE = "com.example.voicerec.UPDATE_STATUS"
+        const val ACTION_TRANSCRIPTION_COMPLETE = "com.example.voicerec.TRANSCRIPTION_COMPLETE"
 
         // 状态常量
         const val STATE_IDLE = 0
@@ -285,11 +288,17 @@ class RecordingService : Service() {
                     if (duration >= MIN_RECORDING_MS && fileSize > 0) {
                         // 使用协程保存，避免阻塞
                         CoroutineScope(Dispatchers.IO).launch {
-                            repository.saveRecording(
+                            val savedRecording = repository.saveRecording(
                                 fileName = recordingFile.name,
                                 durationMs = duration,
                                 fileSizeBytes = fileSize
                             )
+
+                            // 保存成功后，自动开始转写
+                            savedRecording?.let { recording ->
+                                Log.i(TAG, "Recording saved, starting auto-transcription: ${recording.id}")
+                                startAutoTranscription(recording)
+                            }
                         }
                     } else {
                         // 录音太短或文件为空，删除
@@ -310,6 +319,56 @@ class RecordingService : Service() {
             e.printStackTrace()
             mediaRecorder = null
             currentOutputFile = null
+        }
+    }
+
+    /**
+     * 自动转写录音（后台运行）
+     */
+    private fun startAutoTranscription(recording: Recording) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                // 检查模型是否准备好
+                val modelManager = WhisperModelManager(applicationContext)
+                if (!modelManager.isModelReady()) {
+                    Log.w(TAG, "Model not ready, skipping auto-transcription")
+                    return@launch
+                }
+
+                Log.i(TAG, "Starting auto-transcription for recording: ${recording.id}")
+
+                // 创建WhisperService并转写
+                val whisperService = WhisperService(applicationContext)
+                val result = whisperService.transcribeAudio(recording.filePath) { message ->
+                    Log.d(TAG, "Transcription progress: $message")
+                }
+                whisperService.release()
+
+                result.fold(
+                    onSuccess = { text ->
+                        Log.i(TAG, "Auto-transcription success for recording: ${recording.id}")
+                        // 更新数据库
+                        val updatedRecording = recording.copy(
+                            transcriptionText = text,
+                            transcriptionTime = System.currentTimeMillis()
+                        )
+                        repository.updateRecording(updatedRecording)
+
+                        // 发送转写完成广播
+                        val intent = Intent(ACTION_TRANSCRIPTION_COMPLETE).apply {
+                            putExtra("recordingId", recording.id)
+                            putExtra("text", text)
+                        }
+                        sendBroadcast(intent)
+                    },
+                    onFailure = { error ->
+                        Log.e(TAG, "Auto-transcription failed for recording: ${recording.id}, error: ${error.message}")
+                    }
+                )
+
+            } catch (e: Exception) {
+                Log.e(TAG, "Auto-transcription error: ${e.message}")
+            }
         }
     }
 
