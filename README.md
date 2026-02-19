@@ -4,6 +4,7 @@
 [![Kotlin](https://img.shields.io/badge/Kotlin-1.9.0-blue.svg)](https://kotlinlang.org)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
+> android studio 项目，集成whisper和qwen2.5 1.5B，实现离线语音记录
 > 智能语音录音应用 - 自动检测声音、录音并转录为文字，由 AI 驱动本地处理，保护您的隐私。
 
 ## 功能特性
@@ -196,6 +197,12 @@ cmake --build build
 ./gradlew test
 ./gradlew connectedAndroidTest
 ```
+
+## 效果展示
+![20b113e2762e59b3e608c3a9ab5b0ab](https://github.com/user-attachments/assets/82dba7da-6fb4-44e0-bec6-4105c4398b78)
+![6a3ba7d71a22fe89d43bd06bfa25326](https://github.com/user-attachments/assets/a5ce4f32-5cc2-421d-84fd-6de425ce477b)
+![4f4e6fa044fcbeb52c96c530c66e22d](https://github.com/user-attachments/assets/8d5b8d58-bc84-4bf5-92cc-a14d0d6c140a)
+
 
 ## 贡献
 
