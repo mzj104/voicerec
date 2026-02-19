@@ -24,6 +24,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
 import android.util.Log
+import kotlin.Result
 
 /**
  * 录音服务
@@ -354,6 +355,9 @@ class RecordingService : Service() {
                         )
                         repository.updateRecording(updatedRecording)
 
+                        // Generate AI title after transcription
+                        generateAiTitle(recording.id, text)
+
                         // 发送转写完成广播
                         val intent = Intent(ACTION_TRANSCRIPTION_COMPLETE).apply {
                             putExtra("recordingId", recording.id)
@@ -368,6 +372,27 @@ class RecordingService : Service() {
 
             } catch (e: Exception) {
                 Log.e(TAG, "Auto-transcription error: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * 生成 AI 标题
+     */
+    private fun generateAiTitle(recordingId: Long, transcriptionText: String) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val llamaService = LlamaService(applicationContext)
+                val aiTitle = llamaService.generateAiTitle(transcriptionText).getOrNull()
+                aiTitle?.let { title ->
+                    Log.i(TAG, "AI title generated: $title for recording: $recordingId")
+                    // Update database with AI title
+                    repository.updateAiTitle(recordingId, title, System.currentTimeMillis())
+                }
+                llamaService.release()
+            } catch (e: Exception) {
+                Log.w(TAG, "AI title generation failed, not blocking", e)
+                // Don't throw - title generation failure shouldn't block transcription
             }
         }
     }

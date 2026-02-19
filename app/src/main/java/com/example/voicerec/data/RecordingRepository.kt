@@ -51,6 +51,11 @@ class RecordingRepository(private val context: Context) {
     suspend fun updateRecording(recording: Recording) = dao.update(recording)
 
     /**
+     * 更新AI生成的标题
+     */
+    suspend fun updateAiTitle(id: Long, title: String, timestamp: Long) = dao.updateAiTitle(id, title, timestamp)
+
+    /**
      * 创建录音文件并保存到数据库
      * @return 保存的Recording对象，失败返回null
      */
