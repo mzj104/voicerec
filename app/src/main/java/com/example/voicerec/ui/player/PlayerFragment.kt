@@ -22,6 +22,8 @@ import com.example.voicerec.MainActivity
 import com.example.voicerec.R
 import com.example.voicerec.databinding.FragmentPlayerBinding
 import com.example.voicerec.service.RecordingService
+import com.example.voicerec.service.WhisperModelManager
+import com.example.voicerec.service.WhisperService
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.launch
 import java.io.File
@@ -109,6 +111,11 @@ class PlayerFragment : Fragment() {
         binding.btnDelete.setOnClickListener {
             confirmDelete()
         }
+
+        // 转写按钮
+        binding.btnTranscribe.setOnClickListener {
+            transcribeRecording()
+        }
     }
 
     private fun observeData() {
@@ -145,8 +152,136 @@ class PlayerFragment : Fragment() {
         binding.tvRecordingDuration.text = viewModel.formatTime((recording.durationMs / 1000).toInt())
         binding.tvRecordingSize.text = viewModel.formatFileSize(recording.fileSizeBytes)
 
+        // 显示转写结果
+        updateTranscriptionView(recording)
+
         // 初始化MediaPlayer
         initPlayer(recording.filePath)
+    }
+
+    private fun updateTranscriptionView(recording: com.example.voicerec.data.Recording) {
+        if (!recording.transcriptionText.isNullOrEmpty()) {
+            binding.tvTranscriptionText.text = recording.transcriptionText
+            binding.btnTranscribe.text = "重新转写"
+
+            // 显示转写时间
+            recording.transcriptionTime?.let {
+                val timeFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+                binding.tvTranscriptionTime.text = "转写于 ${timeFormat.format(Date(it))}"
+                binding.tvTranscriptionTime.visibility = View.VISIBLE
+            }
+        } else {
+            binding.tvTranscriptionText.text = "点击「转文字」按钮开始语音识别"
+            binding.btnTranscribe.text = "转文字"
+            binding.tvTranscriptionTime.visibility = View.GONE
+        }
+    }
+
+    private fun transcribeRecording() {
+        val recording = viewModel.getCurrentRecording()
+        if (recording == null) {
+            Toast.makeText(context, "录音信息加载中", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        // 检查模型是否已准备好
+        val modelManager = WhisperModelManager(requireContext())
+        if (!modelManager.isModelReady()) {
+            // 显示准备模型对话框
+            MaterialAlertDialogBuilder(requireContext())
+                .setTitle("准备语音识别模型")
+                .setMessage("首次使用需要复制中文语音识别模型 (~78MB) 到应用目录。\n\n是否立即准备？")
+                .setPositiveButton("准备") { _, _ ->
+                    prepareModelAndTranscribe(recording)
+                }
+                .setNegativeButton("取消", null)
+                .show()
+            return
+        }
+
+        // 直接开始转写
+        performTranscription(recording)
+    }
+
+    private fun prepareModelAndTranscribe(recording: com.example.voicerec.data.Recording) {
+        val progressDialog = MaterialAlertDialogBuilder(requireContext())
+            .setTitle("准备模型")
+            .setMessage("正在复制模型...")
+            .setCancelable(false)
+            .create()
+        progressDialog.show()
+
+        lifecycleScope.launch {
+            val modelManager = WhisperModelManager(requireContext())
+            val result = modelManager.copyModelFromAssets { message ->
+                activity?.runOnUiThread {
+                    progressDialog.setMessage(message)
+                }
+            }
+
+            progressDialog.dismiss()
+
+            result.fold(
+                onSuccess = {
+                    Toast.makeText(context, "模型准备完成", Toast.LENGTH_SHORT).show()
+                    performTranscription(recording)
+                },
+                onFailure = { error ->
+                    Toast.makeText(context, "失败: ${error.message}", Toast.LENGTH_LONG).show()
+                }
+            )
+        }
+    }
+
+    private fun performTranscription(recording: com.example.voicerec.data.Recording) {
+        val progressDialog = MaterialAlertDialogBuilder(requireContext())
+            .setTitle("语音转文字")
+            .setMessage("正在处理...")
+            .setCancelable(false)
+            .create()
+        progressDialog.show()
+
+        // 更新UI状态
+        binding.tvTranscriptionText.text = "正在识别，请稍候..."
+        binding.btnTranscribe.isEnabled = false
+
+        lifecycleScope.launch {
+            val whisperService = WhisperService(requireContext())
+            val result = whisperService.transcribeAudio(recording.filePath) { message ->
+                activity?.runOnUiThread {
+                    progressDialog.setMessage(message)
+                }
+            }
+            whisperService.release()
+
+            progressDialog.dismiss()
+            binding.btnTranscribe.isEnabled = true
+
+            result.fold(
+                onSuccess = { text ->
+                    binding.tvTranscriptionText.text = text
+                    binding.btnTranscribe.text = "重新转写"
+
+                    // 显示转写时间
+                    val timeFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+                    binding.tvTranscriptionTime.text = "转写于 ${timeFormat.format(Date(System.currentTimeMillis()))}"
+                    binding.tvTranscriptionTime.visibility = View.VISIBLE
+
+                    // 更新数据库
+                    val updatedRecording = recording.copy(
+                        transcriptionText = text,
+                        transcriptionTime = System.currentTimeMillis()
+                    )
+                    viewModel.updateRecording(updatedRecording)
+
+                    Toast.makeText(context, "转写完成", Toast.LENGTH_SHORT).show()
+                },
+                onFailure = { error ->
+                    binding.tvTranscriptionText.text = "转写失败：${error.message}"
+                    Toast.makeText(context, "转写失败: ${error.message}", Toast.LENGTH_LONG).show()
+                }
+            )
+        }
     }
 
     private fun initPlayer(filePath: String) {

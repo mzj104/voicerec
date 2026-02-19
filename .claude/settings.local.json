@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "Bash(.gradlew.bat assembleDebug --console=plain)",
+      "Bash(where:*)",
+      "Bash(cmd:*)",
+      "Bash(./gradlew:*)",
+      "Bash(adb:*)",
+      "Bash(curl:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
+    ]
+  }
+}

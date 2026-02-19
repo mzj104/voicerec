@@ -5,6 +5,7 @@ import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -47,6 +48,12 @@ interface RecordingDao {
      */
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(recording: Recording): Long
+
+    /**
+     * 更新录音
+     */
+    @Update
+    suspend fun update(recording: Recording)
 
     /**
      * 删除录音

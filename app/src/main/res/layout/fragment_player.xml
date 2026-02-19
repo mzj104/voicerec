@@ -218,5 +218,83 @@
                 app:iconTint="@color/error"
                 app:strokeColor="@color/error" />
         </LinearLayout>
+
+        <!-- 转写结果卡片 -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/card_transcription"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_margin="16dp"
+            android:layout_marginTop="24dp"
+            app:cardBackgroundColor="@color/surface"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="4dp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/layout_actions">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <!-- 转写标题栏 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="转写结果"
+                        android:textColor="@color/on_surface"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_transcribe"
+                        style="@style/Widget.Material3.Button.TextButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="转文字"
+                        android:textSize="14sp"
+                        app:icon="@drawable/ic_audio" />
+                </LinearLayout>
+
+                <!-- 转写时间 -->
+                <TextView
+                    android:id="@+id/tv_transcription_time"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="尚未转写"
+                    android:textColor="@color/on_surface_variant"
+                    android:textSize="12sp"
+                    android:visibility="gone" />
+
+                <!-- 转写内容（可滚动） -->
+                <ScrollView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:maxHeight="200dp"
+                    android:background="@color/background"
+                    android:padding="12dp">
+
+                    <TextView
+                        android:id="@+id/tv_transcription_text"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="点击「转文字」按钮开始语音识别"
+                        android:textColor="@color/on_surface"
+                        android:textSize="15sp"
+                        android:lineSpacingExtra="4dp" />
+                </ScrollView>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
     </androidx.constraintlayout.widget.ConstraintLayout>
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

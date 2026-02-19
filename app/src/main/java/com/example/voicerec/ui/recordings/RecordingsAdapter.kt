@@ -19,7 +19,8 @@ class RecordingsAdapter(
     private val viewModel: RecordingsViewModel,
     private val onItemClick: (Recording) -> Unit,
     private val onItemLongClick: (Recording) -> Unit,
-    private val onDayDelete: (String) -> Unit
+    private val onDayDelete: (String) -> Unit,
+    private val onTranscribe: (Recording) -> Unit
 ) : ListAdapter<RecordingsAdapter.TreeItem, RecyclerView.ViewHolder>(DiffCallback()) {
 
     sealed class TreeItem {
@@ -101,6 +102,7 @@ class RecordingsAdapter(
         private val titleText: TextView = view.findViewById(R.id.tv_recording_title)
         private val subtitleText: TextView = view.findViewById(R.id.tv_recording_subtitle)
         private val moreIcon: ImageView = view.findViewById(R.id.iv_more)
+        private val transcribeButton: TextView = view.findViewById(R.id.btn_transcribe)
 
         fun bind(item: TreeItem.RecordingItem) {
             val recording = item.recording
@@ -110,6 +112,13 @@ class RecordingsAdapter(
             titleText.text = time
             subtitleText.text = "${viewModel.formatDuration(recording.durationMs)} · " +
                     viewModel.formatFileSize(recording.fileSizeBytes)
+
+            // 根据是否已转录更新按钮文本
+            transcribeButton.text = if (recording.transcriptionText != null) {
+                "查看"
+            } else {
+                "转文字"
+            }
 
             itemView.setOnClickListener {
                 onItemClick(recording)
@@ -122,6 +131,10 @@ class RecordingsAdapter(
 
             moreIcon.setOnClickListener {
                 onItemLongClick(recording)
+            }
+
+            transcribeButton.setOnClickListener {
+                onTranscribe(recording)
             }
         }
     }

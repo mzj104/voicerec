@@ -46,6 +46,11 @@ class RecordingRepository(private val context: Context) {
     suspend fun getRecordingById(id: Long): Recording? = dao.getRecordingById(id)
 
     /**
+     * 更新录音
+     */
+    suspend fun updateRecording(recording: Recording) = dao.update(recording)
+
+    /**
      * 创建录音文件并保存到数据库
      * @return 保存的Recording对象，失败返回null
      */

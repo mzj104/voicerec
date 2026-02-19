@@ -24,5 +24,7 @@ data class Recording(
     val hourFolder: String,
     val timestamp: Long,
     val durationMs: Long,
-    val fileSizeBytes: Long
+    val fileSizeBytes: Long,
+    val transcriptionText: String? = null,
+    val transcriptionTime: Long? = null
 )

@@ -91,4 +91,12 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
      * 获取当前录音
      */
     fun getCurrentRecording(): Recording? = _currentRecording.value
+
+    /**
+     * 更新录音（转写结果）
+     */
+    suspend fun updateRecording(recording: Recording) {
+        repository.updateRecording(recording)
+        _currentRecording.value = recording
+    }
 }
